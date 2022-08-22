@@ -1,0 +1,67 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: fib-api
+spec:
+  selector:
+    app: fib-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fib-api
+spec:
+  selector:
+    matchLabels:
+      app: fib-api
+  template:
+    metadata:
+      labels:
+        app: fib-api
+    spec:
+      containers:
+        - name: fib-api
+          image: fib-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 150m
+              memory: 368Mi
+--- ### Auto Scaling
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fib-auto-scaler
+spec:
+  minReplicas: 1
+  maxReplicas: 10
+  scaleTargetRef:
+    apiVersion: autoscaling/v2beta2
+    kind: Deployment
+    name: fib-api
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60 # Stabilization window for waiting 1 minute before scaling up.
